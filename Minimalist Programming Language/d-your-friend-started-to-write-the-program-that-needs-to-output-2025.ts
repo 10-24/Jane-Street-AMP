@@ -1,42 +1,4 @@
-class Path {
-
-    constructor(public route: string, public cost: number) {}
-    push(other: Path) {
-      this.route += other.route;
-      this.cost += other.cost;
-      return this;
-    }
-    pushInParenthesis(other: Path) {
-      this.route += other.wrapInParenthesis().route;
-  
-      this.cost += other.cost;
-      return this;
-    }
-    pushWithMathOperator(operator: string, other: Path) {
-      this.route = `${this.route}${operator}${other.route}`;
-      this.cost += operator.length + other.cost;
-      return this;
-    }
-    min(other: Path) {
-      if (this.cost === other.cost) {
-        if (this.route.length < other.route.length) return this;
-        return other;
-      }
-  
-      if (this.cost < other.cost) return this;
-      return other;
-    }
-    wrapInParenthesis() {
-      this.route = `(${this.route})`;
-      return this;
-    }
-    clone() {
-      return new Path(this.route, this.cost);
-    }
-  }
-  
   const NUM = 2025;
-  
   const findCheapestPath = cachedFindCheapestPath();
   const { route, cost } = findCheapestPath(NUM, 0);
   console.log(`Route: '${route}'`);
@@ -113,4 +75,40 @@ class Path {
       return factorPair;
     }
   }
+
+  class Path {
+
+    constructor(public route: string, public cost: number) {}
+    push(other: Path) {
+      this.route += other.route;
+      this.cost += other.cost;
+      return this;
+    }
+    pushInParenthesis(other: Path) {
+      this.route += other.wrapInParenthesis().route;
   
+      this.cost += other.cost;
+      return this;
+    }
+    pushWithMathOperator(operator: string, other: Path) {
+      this.route = `${this.route}${operator}${other.route}`;
+      this.cost += operator.length + other.cost;
+      return this;
+    }
+    min(other: Path) {
+      if (this.cost === other.cost) {
+        if (this.route.length < other.route.length) return this;
+        return other;
+      }
+  
+      if (this.cost < other.cost) return this;
+      return other;
+    }
+    wrapInParenthesis() {
+      this.route = `(${this.route})`;
+      return this;
+    }
+    clone() {
+      return new Path(this.route, this.cost);
+    }
+  }
