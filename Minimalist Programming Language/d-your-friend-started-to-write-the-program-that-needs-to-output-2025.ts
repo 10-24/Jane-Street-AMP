@@ -1,10 +1,16 @@
+
   const NUM = 2025;
+  // cachedFindCheapestPath() returns a curried fn
   const findCheapestPath = cachedFindCheapestPath();
   const { route, cost } = findCheapestPath(NUM, 0);
+
   console.log(`Route: '${route}'`);
   console.log(`Cost: ${cost}`);
-  console.log(`Route Length: ${route.length}`);
-  
+  //  Output
+  // "Route: 'g(f(f(g(f(g(g(g(g(g(a))))))))))'"
+  // "Cost: 31"
+
+
   function cachedFindCheapestPath() {
     const cache = new Map<number, Path>();
   
