@@ -1,6 +1,6 @@
 use std::{array, cell::Cell};
 
-use rand::random_bool;
+use rand::{random_bool, random_range};
 
 const CELLS_IN_BASTION: i16 = 100;
 const MAX_SEARCHES_PER_DAY: usize = 10;
@@ -23,7 +23,6 @@ fn main(){
         }
     }
     println!("{max_days}"); // Output: 24
-    
 }
 
 /**
@@ -38,7 +37,7 @@ fn simulate(spy_cell:i16) -> i16 {
         // Set 1
         Muncher::new([0, 1], 1), // Muncher A 
         Muncher::new([48, 49], -1), // Muncher B 
-        Muncher::new([25, 26], 0), // Muncher C 
+        Muncher::new([24, 25], 0), // Muncher C 
 
         // Set 2
         Muncher::new([50, 51], 1),  // Muncher D 
@@ -47,7 +46,8 @@ fn simulate(spy_cell:i16) -> i16 {
     ];
 
     
-    for day in 0..  { 
+    for day in 1..  { 
+
 
         let searches: Vec<i16> = munchers
             .iter()
@@ -67,6 +67,8 @@ fn simulate(spy_cell:i16) -> i16 {
             });
             muncher.move_forwards(&other_munchers);
         };
+        
+        
     };
 
     i16::MAX
@@ -84,29 +86,31 @@ impl Spy {
     }
     pub fn overhear(&mut self, searches: &[i16]) {
 
+        // Probably not a perfect rendition of a brilliant spy
         if !searches.contains(&self.current_cell) {
+            let shift: i16 = random_range(-1..=1);
+            self.shift_cell_if_unsearched(&shift, searches);
             return;
         }
 
-        // Probably not a perfect rendition of a brilliant spy
+        
         let mut check_direction = if random_bool(0.5) { 1 } else { -1 };
 
-        let possible_cell = shift_cell_index(&self.current_cell,&check_direction);
-        let switched = self.switch_to_cell_if_unsearched(possible_cell, searches);
+      
+        let switched = self.shift_cell_if_unsearched(&check_direction, searches);
         if switched {
             return;
         }
-
         check_direction *= -1;
-        let possible_cell = shift_cell_index(&self.current_cell,&check_direction);
-        let _ = self.switch_to_cell_if_unsearched(possible_cell, searches);
+        let _ = self.shift_cell_if_unsearched(&check_direction, searches);
     }
 
-    fn switch_to_cell_if_unsearched(
+    fn shift_cell_if_unsearched(
         &mut self,
-        possible_cell: i16,
+        direction: &i16,
         searches: &[i16],
     ) -> bool {
+        let possible_cell = shift_cell_index(&self.current_cell,&direction);
         if !searches.contains(&possible_cell) {
             self.current_cell = possible_cell;
             return true;
