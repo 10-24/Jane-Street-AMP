@@ -2,22 +2,23 @@ use std::{array, cell::Cell};
 
 use rand::random_bool;
 
-const CELLS_IN_BASTION: i32 = 100;
+const CELLS_IN_BASTION: i16 = 100;
 const MAX_SEARCHES_PER_DAY: usize = 10;
 const MUNCHER_LEN: usize = 2;
 const NUM_MUNCHERS: usize = MAX_SEARCHES_PER_DAY / MUNCHER_LEN;
 
-/*  Probably should have used a scripting language 🙃
-    Trying to stop the munchers from colliding costed me thirty minutes fighting the borrow checker.
+/*  
+    Probably should have used a scripting language 🙃.
+    Trying to stop the munchers from overlapping
+    costed me thirty minutes of skirmishing ⚔ with the borrow checker.
 */
 fn main(){
-    let mut max_days = i32::MIN;
+    let mut max_days = i16::MIN;
 
     // The Spy checks adjacent cells randomly. So the simulation must be run multiple times
     for _ in 0..7 {
         for spy_starting_cell  in 0..100 {
             let days = simulate(spy_starting_cell);
-            println!("Starting Cell {spy_starting_cell}, days {days}");
             max_days = max_days.max(days);
         }
     }
@@ -25,21 +26,30 @@ fn main(){
     
 }
 
-fn simulate(spy_cell:i32) -> i32 {
+/**
+ * Returns the number of days to catch the spy
+ */
+fn simulate(spy_cell:i16) -> i16 {
     
     let mut spy = Spy::new(spy_cell);
 
     let munchers: [Muncher; NUM_MUNCHERS] = [
-        Muncher::new([0, 1], Direction::new(&Hand::Right)), // Total Distance apart 49
-        Muncher::new([50, 49], Direction::new(&Hand::Left)),
-        Muncher::new([25, 26], Direction::new(&Hand::Neutral)),
-        Muncher::new([51, 52], Direction::new(&Hand::Right)), // Total Distance apart 47
-        Muncher::new([98, 99], Direction::new(&Hand::Left)),
+
+        // Set 1
+        Muncher::new([0, 1], 1), // Muncher A 
+        Muncher::new([48, 49], -1), // Muncher B 
+        Muncher::new([25, 26], 0), // Muncher C 
+
+        // Set 2
+        Muncher::new([50, 51], 1),  // Muncher D 
+        Muncher::new([98, 99], -1), // Muncher E 
+
     ];
-    let mut day = 1;
-    loop  { 
-        println!("{day}");
-        let searches: Vec<i32> = munchers
+
+    
+    for day in 0..  { 
+
+        let searches: Vec<i16> = munchers
             .iter()
             .flat_map(|muncher| muncher.body.get())
             .collect();
@@ -57,48 +67,45 @@ fn simulate(spy_cell:i32) -> i32 {
             });
             muncher.move_forwards(&other_munchers);
         };
-        day+=1;
     };
-    
+
+    i16::MAX
+
 }
 
 struct Spy {
-    current_cell: i32,
+    current_cell: i16,
 }
 impl Spy {
-    pub fn new(current_cell:i32) -> Spy {
+    pub fn new(current_cell:i16) -> Spy {
         Self {
             current_cell,
         }
     }
-    pub fn overhear(&mut self, searches: &[i32]) {
+    pub fn overhear(&mut self, searches: &[i16]) {
 
         if !searches.contains(&self.current_cell) {
             return;
         }
 
-        // Maybe not a perfect portrayal of a brilliant spy
-        let mut shift_direction = if random_bool(0.5) { 
-            Direction::new(&Hand::Left) 
-        } else { 
-            Direction::new(&Hand::Right) 
-        };
+        // Probably not a perfect rendition of a brilliant spy
+        let mut check_direction = if random_bool(0.5) { 1 } else { -1 };
 
-        let possible_cell = next_position(&self.current_cell,&shift_direction);
+        let possible_cell = shift_cell_index(&self.current_cell,&check_direction);
         let switched = self.switch_to_cell_if_unsearched(possible_cell, searches);
         if switched {
             return;
         }
 
-        shift_direction.flip();
-        let possible_cell = next_position(&self.current_cell,&shift_direction);
+        check_direction *= -1;
+        let possible_cell = shift_cell_index(&self.current_cell,&check_direction);
         let _ = self.switch_to_cell_if_unsearched(possible_cell, searches);
     }
 
     fn switch_to_cell_if_unsearched(
         &mut self,
-        possible_cell: i32,
-        searches: &[i32],
+        possible_cell: i16,
+        searches: &[i16],
     ) -> bool {
         if !searches.contains(&possible_cell) {
             self.current_cell = possible_cell;
@@ -106,31 +113,31 @@ impl Spy {
         }
         false
     }
-    pub fn is_in_cell(&self, searched_cell: i32) -> bool {
+    pub fn is_in_cell(&self, searched_cell: i16) -> bool {
         searched_cell == self.current_cell
     }
 }
 
 struct Muncher {
-    body: Cell<[i32; MUNCHER_LEN]>,
-    direction: Direction,
+    body: Cell<[i16; MUNCHER_LEN]>,
+    velocity: i16,
 }
 impl Muncher {
-    fn new(body: [i32; MUNCHER_LEN], direction: Direction) -> Muncher {
-        Self { body:Cell::new(body), direction }
+    fn new(body: [i16; MUNCHER_LEN], velocity: i16) -> Muncher {
+        Self { body:Cell::new(body), velocity, }
     }
     fn move_forwards(&self, other_munchers: &[&Muncher;NUM_MUNCHERS-1]) {
 
         let current_body = self.body.get();
-        let new_body:[i32;MUNCHER_LEN] = array::from_fn(|i|{
-            next_position(&current_body[i], &self.direction)
+        let new_body:[i16;MUNCHER_LEN] = array::from_fn(|i|{
+            shift_cell_index(&current_body[i], &self.velocity)
         });
 
-        let other_segments:[i32;(NUM_MUNCHERS-1)*2] = other_munchers.iter()
+        let other_segments:[i16;(NUM_MUNCHERS-1)*2] = other_munchers.iter()
             .flat_map(|other_muncher|{
                 other_muncher.body.get()
             })
-            .collect::<Vec<i32>>()
+            .collect::<Vec<i16>>()
             .try_into()
             .unwrap();
 
@@ -140,32 +147,13 @@ impl Muncher {
             .any(|new_segment| other_segments.contains(new_segment));
 
         if !has_collision {
-            return self.body.set(new_body);
+            self.body.set(new_body);
         }
-        println!("collison")
+        
        
     }
 }
-enum Hand {
-    Left,
-    Right,
-    Neutral,
-}
-struct Direction(i32);
-impl Direction {
-    fn new(hand: &Hand) -> Self {
-        match hand {
-            Hand::Left => Self(-1),
-            Hand::Right => Self(1),
-            Hand::Neutral => Self(0),
-        }
-    }
-    fn flip(&mut self) {
-        self.0 = -self.0 
-    }
-}
-fn next_position(current_position:&i32,direction:&Direction) -> i32 {
-    let shift = direction.0;
+fn shift_cell_index(current_position:&i16,shift:&i16) -> i16 {
     let next_position =(current_position + shift).rem_euclid(CELLS_IN_BASTION);
     
     assert!(next_position >= 0, "Next position is negative = {}",next_position);
